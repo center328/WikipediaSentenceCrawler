@@ -9,6 +9,7 @@ class WikipediaSentenceCrawler(object):
     ARTICLES_TO_LOOKUP = []
     ARTICLES_PARSED = []
     MAX_QUEUE_SIZE = 10
+    KILL = False
     
     
     def __init__(self):
@@ -25,15 +26,27 @@ class WikipediaSentenceCrawler(object):
     # @param url:    The /wiki/* URL of the initial article.
     ##
     def startParser(self, url):
+        self.KILL = False
+        
         # Save the initial article
         self.ARTICLES_TO_LOOKUP.append(url)
         self.loop()
+        
+        
+    ##
+    # Stops the parser if running.
+    ##
+    def stopParser(self):
+        self.KILL = True
         
     
     ##
     # Loop until we learn everything!
     ##
     def loop(self):
+        if self.KILL:
+            return
+        
         url = self.ARTICLES_TO_LOOKUP.pop()
         self.ARTICLES_PARSED.append(url)
         self.logParsedArticle(url)
