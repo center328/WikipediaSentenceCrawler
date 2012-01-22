@@ -4,6 +4,7 @@ import urllib2
 from BeautifulSoup import BeautifulSoup, SoupStrainer
 import re
 import string
+import os
 
 __appname__ = "[Fisher Innovation Wikipedia Senetence Crawler]"
 __author__  = "Matt Fisher (fisher.matt@gmail.com)"
@@ -23,6 +24,7 @@ class WikipediaSentenceCrawler(object):
     ARTICLES_PARSED = []
     MAX_QUEUE_SIZE = 10
     SENTENCE_LOG_COUNT = 0
+    WORD_COUNT = 0
     KILL = False
 
     ones = ["", "one ","two ","three ","four ", "five ",
@@ -45,10 +47,13 @@ class WikipediaSentenceCrawler(object):
     #
     ##
     def __init__(self):
-        print "Fisher Innovation Wikipedia Sentence Crawler"
-        print "Written By: Matt Fisher"
-        print "Web: http://www.fisherinnovation.com"
-        print "--------------------------------------------"
+        print ""
+        print "_______________________________________________________________________"
+        print "           Fisher Innovation Wikipedia Sentence Crawler"
+        print "          Created By: Matt Fisher (fisher.matt@gmail.com)"
+        print "              Web: http://www.fisherinnovation.com"
+        print " Source: https://github.com/fisherinnovation/WikipediaSentenceCrawler"
+        print "_______________________________________________________________________"
         print ""
         
 
@@ -58,6 +63,8 @@ class WikipediaSentenceCrawler(object):
     # @param url:    The /wiki/* URL of the initial article.
     ##
     def startParser(self, url):
+    	print '>> NOTICE: Attemping initial connection to ' + self.BASE_URL + url
+    	
         self.KILL = False
         
         # Save the initial article
@@ -84,9 +91,41 @@ class WikipediaSentenceCrawler(object):
         self.logParsedArticle(url)
         self.parseArticleLinks(url)
         self.parseArticle(url)
-        print '>> NOTICE: ' + str(len(self.ARTICLES_PARSED)) + ' Articles Parsed. ' + str(self.SENTENCE_LOG_COUNT) + ' Sentences Logged.'
-    
+        
+        print '>> NOTICE: ' + str(len(self.ARTICLES_PARSED)) + ' Articles Parsed. ' + str(self.SENTENCE_LOG_COUNT) + ' Sentences Logged. ' + str(self.WORD_COUNT) + ' Words Logged.'
+    	
+    	outputsize = self.convertBytes(os.path.getsize("output.txt"))
+    	articlelogsize = self.convertBytes(os.path.getsize("parsedarticlelog.txt"))
+    	
+    	print '>> NOTICE: Sentence Log Filesize: ' + str(outputsize) + '. Parsed Article Log Filesize: ' + str(articlelogsize) + '.'
+        
         self.loop()
+    
+    
+    ##
+    # Converts bytes to cleaner output.
+    #
+    # @param bytes: The amount of bytes to convert
+    ##
+    def convertBytes(self, bytes):
+        bytes = float(bytes)
+        
+        if bytes >= 1099511627776:
+            terabytes = bytes / 1099511627776
+            size = '%.2fTB' % terabytes
+        elif bytes >= 1073741824:
+            gigabytes = bytes / 1073741824
+            size = '%.2fGB' % gigabytes
+        elif bytes >= 1048576:
+            megabytes = bytes / 1048576
+            size = '%.2fMB' % megabytes
+        elif bytes >= 1024:
+            kilobytes = bytes / 1024
+            size = '%.2fKB' % kilobytes
+        else:
+            size = '%.2fb' % bytes
+        
+        return size
     
     
     ##
@@ -96,12 +135,15 @@ class WikipediaSentenceCrawler(object):
     # @param url:    The Wikipedia URL to lookup.
     ##
     def parseArticle(self, url):
-        print '>> NOTICE: Attempting to parse ' + str(url)
+        print '>> NOTICE: Attempting to fetch ' + str(url)
         
         opener = urllib2.build_opener()
         opener.addheaders = [('User-agent', 'Mozilla/5.0')]
         infile = opener.open(self.BASE_URL + url)
         page = infile.read()
+        
+        print '>> NOTICE: ' + url + ' recieved! Starting article parsing...'
+        
         soup = BeautifulSoup(page)
         data = soup.findAll('p') 
         
@@ -128,6 +170,11 @@ class WikipediaSentenceCrawler(object):
                                     
                                 n = n + w + ' '
                                 m = n
+                        
+                        # Update word count
+                        c = m.split(' ')
+                        for w in c:
+                         	self.WORD_COUNT = self.WORD_COUNT + 1
                                 
                         self.SENTENCE_LOG_COUNT = self.SENTENCE_LOG_COUNT + 1
                         self.exportArticleToTextFile(m)
@@ -142,7 +189,7 @@ class WikipediaSentenceCrawler(object):
     # @param text:    The article text to appent to the text file.
     ##
     def exportArticleToTextFile(self, text):
-        print '>> NOTICE: Logging: ' + text
+        #print '>> NOTICE: Logging: ' + text
         
         try:
             # This tries to open an existing file but creates a new file if necessary.
