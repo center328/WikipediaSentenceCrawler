@@ -3,13 +3,36 @@
 import urllib2
 from BeautifulSoup import BeautifulSoup, SoupStrainer
 import re
+import string
+
 
 class WikipediaSentenceCrawler(object):
+    # Configuration
     BASE_URL = 'http://en.wikipedia.org'
+    STRIP_PUNCTUATION = True
+    ALL_LOWER_CASE = True
+    CONVERT_NUMBERS_TO_WORDS = True
+
+    
     ARTICLES_TO_LOOKUP = []
     ARTICLES_PARSED = []
     MAX_QUEUE_SIZE = 10
     KILL = False
+
+    ones = ["", "one ","two ","three ","four ", "five ",
+        "six ","seven ","eight ","nine "]
+    
+    tens = ["ten ","eleven ","twelve ","thirteen ", "fourteen ",
+        "fifteen ","sixteen ","seventeen ","eighteen ","nineteen "]
+    
+    twenties = ["","","twenty ","thirty ","forty ",
+        "fifty ","sixty ","seventy ","eighty ","ninety "]
+    
+    thousands = ["","thousand ","million ", "billion ", "trillion ",
+        "quadrillion ", "quintillion ", "sextillion ", "septillion ","octillion ",
+        "nonillion ", "decillion ", "undecillion ", "duodecillion ", "tredecillion ",
+        "quattuordecillion ", "sexdecillion ", "septendecillion ", "octodecillion ",
+        "novemdecillion ", "vigintillion "]
     
     
     def __init__(self):
@@ -74,10 +97,33 @@ class WikipediaSentenceCrawler(object):
         data = soup.findAll('p') 
         
         for n in data:
-            if len(n) > 1:
-                self.exportArticleToTextFile(self.remove_html_tags(str(n)))
+            if len(n) > 10:
+                pat = re.compile(r'([A-Z][^\.!?]*[\.!?])', re.M)
+                results = pat.findall(self.remove_html_tags(str(n)))
+                
+                for m in results:
+                    if len(m) > 50:
+                        if self.STRIP_PUNCTUATION:
+                            m = m.translate(None, string.punctuation)
+                            
+                        if self.ALL_LOWER_CASE:
+                            m = str.lower(str(m))
+                            
+                        if self.CONVERT_NUMBERS_TO_WORDS:
+                            p = m.split(' ')
+                            n = ''
+                            for w in p:
+                                if w.isdigit():
+                                    w = self.intToString(w)
+                                    w = w[:-1] 
+                                    
+                                n = n + w + ' '
+                                m = n
+                                
+                        self.exportArticleToTextFile(m)
             else:
-                print ">> NOTICE: Ignoring parsed paragraph, input too short."
+                #print ">> NOTICE: Ignoring parsed paragraph, input too short."
+                pass
         
     
     ##
@@ -174,6 +220,54 @@ class WikipediaSentenceCrawler(object):
                 return False
         
         return True
+    
+    
+    ##
+    # Integer number to english word conversion
+    # can be used for numbers as large as 999 vigintillion
+    # (vigintillion --> 10 to the power 60)
+    #
+    # @param n:    The int to convert to string.
+    ##
+    def intToString(self, n):
+        n3 = []
+        r1 = ""
+        ns = str(n)
+        for k in range(3, 33, 3):
+            r = ns[-k:]
+            q = len(ns) - k
+            # break if end of ns has been reached
+            if q < -2:
+                break
+            else:
+                if  q >= 0:
+                    n3.append(int(r[:3]))
+                elif q >= -1:
+                    n3.append(int(r[:2]))
+                elif q >= -2:
+                    n3.append(int(r[:1]))
+            r1 = r
+        
+        nw = ""
+        for i, x in enumerate(n3):
+            b1 = x % 10
+            b2 = (x % 100)//10
+            b3 = (x % 1000)//100
+            
+            if x == 0:
+                continue
+            else:
+                t = self.thousands[i]
+            if b2 == 0:
+                nw = self.ones[b1] + t + nw
+            elif b2 == 1:
+                nw = self.tens[b1] + t + nw
+            elif b2 > 1:
+                nw = self.twenties[b2] + self.ones[b1] + t + nw
+            if b3 > 0:
+                nw = self.ones[b3] + "hundred " + nw
+            
+        return nw
     
 
 # Starting at the Jurassic Park article.
