@@ -5,6 +5,11 @@ from BeautifulSoup import BeautifulSoup, SoupStrainer
 import re
 import string
 
+__appname__ = "[Fisher Innovation Wikipedia Senetence Crawler]"
+__author__  = "Matt Fisher (fisher.matt@gmail.com)"
+__version__ = "0.3 alpha"
+__license__ = ""
+
 
 class WikipediaSentenceCrawler(object):
     # Configuration
@@ -17,6 +22,7 @@ class WikipediaSentenceCrawler(object):
     ARTICLES_TO_LOOKUP = []
     ARTICLES_PARSED = []
     MAX_QUEUE_SIZE = 10
+    SENTENCE_LOG_COUNT = 0
     KILL = False
 
     ones = ["", "one ","two ","three ","four ", "five ",
@@ -35,6 +41,9 @@ class WikipediaSentenceCrawler(object):
         "novemdecillion ", "vigintillion "]
     
     
+    ##
+    #
+    ##
     def __init__(self):
         print "Fisher Innovation Wikipedia Sentence Crawler"
         print "Written By: Matt Fisher"
@@ -75,7 +84,7 @@ class WikipediaSentenceCrawler(object):
         self.logParsedArticle(url)
         self.parseArticleLinks(url)
         self.parseArticle(url)
-        print '>> NOTICE: ' + str(len(self.ARTICLES_PARSED)) + ' Articles parsed.'
+        print '>> NOTICE: ' + str(len(self.ARTICLES_PARSED)) + ' Articles Parsed. ' + str(self.SENTENCE_LOG_COUNT) + ' Sentences Logged.'
     
         self.loop()
     
@@ -120,6 +129,7 @@ class WikipediaSentenceCrawler(object):
                                 n = n + w + ' '
                                 m = n
                                 
+                        self.SENTENCE_LOG_COUNT = self.SENTENCE_LOG_COUNT + 1
                         self.exportArticleToTextFile(m)
             else:
                 #print ">> NOTICE: Ignoring parsed paragraph, input too short."
@@ -186,7 +196,7 @@ class WikipediaSentenceCrawler(object):
         infile = opener.open(self.BASE_URL + url)
         response = infile.read()
         
-        for link in BeautifulSoup(response, parseOnlyThese=SoupStrainer('a')):
+        for link in BeautifulSoup(response, fromEncoding="latin1", parseOnlyThese=SoupStrainer('a')):
             if link.has_key('href'):
                 # Verify local link
                 testlink = link['href']
@@ -270,6 +280,26 @@ class WikipediaSentenceCrawler(object):
         return nw
     
 
-# Starting at the Jurassic Park article.
-n = WikipediaSentenceCrawler()   
-n.startParser('/wiki/Jurassic_Park_(film)')
+
+##   
+# Validates argument inputs.
+##
+def validateArguments():
+    # Article Source
+    if opts.start == False:
+        print "ERROR: No start article supplied. --start"
+        return
+    else: 
+        n = WikipediaSentenceCrawler()   
+        n.startParser(args[0])
+        
+    
+if __name__ == '__main__':
+    from optparse import OptionParser
+    parser = OptionParser(description=__doc__, version="%%prog v%s" % __version__)
+    parser.add_option('-v', '--verbose', action="store_true", dest="verbose", default=False, help="Increase verbosity")
+    parser.add_option('-s', '--start', action="store_true", dest="start", help="Starting article")
+    
+    opts, args = parser.parse_args()
+	
+    validateArguments()
