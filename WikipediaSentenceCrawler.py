@@ -290,8 +290,12 @@ def validateArguments():
         print "ERROR: No start article supplied. --start"
         return
     else: 
-        n = WikipediaSentenceCrawler()   
-        n.startParser(args[0])
+    	if len(args) > 0:
+        	n = WikipediaSentenceCrawler()   
+         	n.startParser(args[0])
+        else:
+        	print "ERROR: No start article supplied. --start"
+        	return
         
     
 if __name__ == '__main__':
