@@ -6,9 +6,9 @@ import re
 import string
 import os
 
-__appname__ = "[Fisher Innovation Wikipedia Senetence Crawler]"
+__appname__ = "[Fisher Innovation Wikipedia Sentence Crawler]"
 __author__  = "Matt Fisher (fisher.matt@gmail.com)"
-__version__ = "0.3 alpha"
+__version__ = ""
 __license__ = ""
 
 
@@ -103,6 +103,17 @@ class WikipediaSentenceCrawler(object):
     
     
     ##
+    #
+    ##
+    def readArticleSource(self, url):
+        opener = urllib2.build_opener()
+        opener.addheaders = [('User-agent', 'Mozilla/5.0')]
+        infile = opener.open(self.BASE_URL + url)
+        page = infile.read()
+        return page
+    
+    
+    ##
     # Converts bytes to cleaner output.
     #
     # @param bytes: The amount of bytes to convert
@@ -137,15 +148,13 @@ class WikipediaSentenceCrawler(object):
     def parseArticle(self, url):
         print '>> NOTICE: Attempting to fetch ' + str(url)
         
-        opener = urllib2.build_opener()
-        opener.addheaders = [('User-agent', 'Mozilla/5.0')]
-        infile = opener.open(self.BASE_URL + url)
-        page = infile.read()
+        page = readArticleSource(url)
         
         print '>> NOTICE: ' + url + ' recieved! Starting article parsing...'
         
         soup = BeautifulSoup(page)
-        data = soup.findAll('p') 
+        #data = soup.findAll('p')
+        data = soup.findAll('text') # Switch to special export method
         
         for n in data:
             if len(n) > 10:
@@ -238,10 +247,7 @@ class WikipediaSentenceCrawler(object):
     def parseArticleLinks(self, url):
         global ARTICLES_TO_LOOKUP
         
-        opener = urllib2.build_opener()
-        opener.addheaders = [('User-agent', 'Mozilla/5.0')]
-        infile = opener.open(self.BASE_URL + url)
-        response = infile.read()
+        response = readArticleSource(url)
         
         for link in BeautifulSoup(response, fromEncoding="latin1", parseOnlyThese=SoupStrainer('a')):
             if link.has_key('href'):
