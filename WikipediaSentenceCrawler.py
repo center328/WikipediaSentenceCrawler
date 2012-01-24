@@ -1,10 +1,17 @@
 #!/usr/bin/python
 
 import urllib2
-from BeautifulSoup import BeautifulSoup, SoupStrainer
 import re
 import string
 import os
+import sys
+import time
+
+from BeautifulSoup import BeautifulSoup, SoupStrainer
+
+sys.path.append('lib/voicerecognition')
+from wikimarkup import parselite
+
 
 __appname__ = "[Fisher Innovation Wikipedia Sentence Crawler]"
 __author__  = "Matt Fisher (fisher.matt@gmail.com)"
@@ -17,7 +24,7 @@ class WikipediaSentenceCrawler(object):
     BASE_URL = 'http://en.wikipedia.org'
     STRIP_PUNCTUATION = True
     ALL_LOWER_CASE = True
-    CONVERT_NUMBERS_TO_WORDS = True
+    CONVERT_NUMBERS_TO_WORDS = False
 
     
     ARTICLES_TO_LOOKUP = []
@@ -83,14 +90,20 @@ class WikipediaSentenceCrawler(object):
     # Loop until we learn everything!
     ##
     def loop(self):
+        if len(self.ARTICLES_TO_LOOKUP) == 0:
+            return
+        
         if self.KILL:
             return
         
         url = self.ARTICLES_TO_LOOKUP.pop()
+        
+        data = self.readArticleSource(url)
+        
         self.ARTICLES_PARSED.append(url)
         self.logParsedArticle(url)
-        self.parseArticleLinks(url)
-        self.parseArticle(url)
+        self.parseArticleLinks(data)
+        self.parseArticle(data)
         
         print '>> NOTICE: ' + str(len(self.ARTICLES_PARSED)) + ' Articles Parsed. ' + str(self.SENTENCE_LOG_COUNT) + ' Sentences Logged. ' + str(self.WORD_COUNT) + ' Words Logged.'
     	
@@ -98,6 +111,8 @@ class WikipediaSentenceCrawler(object):
     	articlelogsize = self.convertBytes(os.path.getsize("parsedarticlelog.txt"))
     	
     	print '>> NOTICE: Sentence Log Filesize: ' + str(outputsize) + '. Parsed Article Log Filesize: ' + str(articlelogsize) + '.'
+        
+        time.sleep(5) # Delay so we don't overload Wikipedia
         
         self.loop()
     
@@ -145,24 +160,36 @@ class WikipediaSentenceCrawler(object):
     #
     # @param url:    The Wikipedia URL to lookup.
     ##
-    def parseArticle(self, url):
-        print '>> NOTICE: Attempting to fetch ' + str(url)
-        
-        page = readArticleSource(url)
-        
-        print '>> NOTICE: ' + url + ' recieved! Starting article parsing...'
-        
+    def parseArticle(self, page):
         soup = BeautifulSoup(page)
-        #data = soup.findAll('p')
         data = soup.findAll('text') # Switch to special export method
         
-        for n in data:
+        pat = re.compile(r'([A-Z][^\.!?]*[\.!?])', re.M)
+        results = pat.findall(str(data))
+        
+        for n in results:
             if len(n) > 10:
                 pat = re.compile(r'([A-Z][^\.!?]*[\.!?])', re.M)
                 results = pat.findall(self.remove_html_tags(str(n)))
                 
                 for m in results:
                     if len(m) > 50:
+                        # Remove bad lines
+                        if(m[0] == '*'):
+                            pass
+                        
+                        # Remove link sytax
+                        wikilink_rx = re.compile(r'\[\[(?:[^|\]]*\|)?([^\]]+)\]\]')
+                        m = wikilink_rx.sub(r'\1', m)
+                        
+                        # Remove double space
+                        m = m.replace('  ', ' ')
+                        
+                        # Has more then 3 spaces
+                        d = m.split(' ')
+                        if(len(d) < 3):
+                            pass
+                        
                         if self.STRIP_PUNCTUATION:
                             m = m.translate(None, string.punctuation)
                             
@@ -179,7 +206,7 @@ class WikipediaSentenceCrawler(object):
                                     
                                 n = n + w + ' '
                                 m = n
-                        
+                        '''
                         # Update word count
                         c = m.split(' ')
                         for w in c:
@@ -187,10 +214,12 @@ class WikipediaSentenceCrawler(object):
                                 
                         self.SENTENCE_LOG_COUNT = self.SENTENCE_LOG_COUNT + 1
                         self.exportArticleToTextFile(m)
+                        '''        
+                        print m
             else:
                 #print ">> NOTICE: Ignoring parsed paragraph, input too short."
                 pass
-        
+       
     
     ##
     # Exports a stricle text to a text file.
@@ -244,12 +273,10 @@ class WikipediaSentenceCrawler(object):
     #
     # @param url:    The Wikipedia URL to lookup.
     ##
-    def parseArticleLinks(self, url):
+    def parseArticleLinks(self, page):
         global ARTICLES_TO_LOOKUP
         
-        response = readArticleSource(url)
-        
-        for link in BeautifulSoup(response, fromEncoding="latin1", parseOnlyThese=SoupStrainer('a')):
+        for link in BeautifulSoup(page, fromEncoding="latin1", parseOnlyThese=SoupStrainer('a')):
             if link.has_key('href'):
                 # Verify local link
                 testlink = link['href']
